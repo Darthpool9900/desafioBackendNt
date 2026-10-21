@@ -1,0 +1,43 @@
+package com.teste.pagamento.data;
+
+import org.springframework.http.HttpStatus;
+
+public enum CheckoutError {
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    CART_NOT_FOUND(HttpStatus.NOT_FOUND),
+    INVALID_PAYMENT_METHOD(HttpStatus.BAD_REQUEST),
+    PAYMENT_DECLINED(HttpStatus.UNPROCESSABLE_ENTITY),
+    PAYMENT_ALREADY_APPROVED(HttpStatus.CONFLICT),
+
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST),
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
+    INVALID_CARD_NUMBER(HttpStatus.BAD_REQUEST),
+    INVALID_CARD_EXPIRY(HttpStatus.BAD_REQUEST),
+    INVALID_CARD_CVV(HttpStatus.BAD_REQUEST),
+    INVALID_CARD_HOLDER(HttpStatus.BAD_REQUEST),
+    INVALID_PIX_REQUEST(HttpStatus.BAD_REQUEST),
+    EMPTY_CART(HttpStatus.BAD_REQUEST),
+
+    INVALID_CART_STATE(HttpStatus.CONFLICT),
+    PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT),
+    DUPLICATE_REQUEST(HttpStatus.CONFLICT),
+
+    PRODUCT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    PAYMENT_METHOD_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    REDIS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    DATABASE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    MESSAGE_BROKER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
+    EXTERNAL_SERVICE_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT),
+
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
+
+    private final HttpStatus status;
+
+    CheckoutError(HttpStatus status) {
+        this.status = status;
+    }
+
+    public HttpStatus getStatus() {
+        return status;
+    }
+}
