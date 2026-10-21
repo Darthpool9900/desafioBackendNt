@@ -136,7 +136,62 @@ docker compose down -v
 
 > **Atenção:** `down -v` apaga os volumes gerenciados pelo Compose, incluindo os dados locais do PostgreSQL.
 
-### Configuração por ambiente
+### Configuração por ambiente: Spring Boot, PostgreSQL, Hibernate e Flyway
+
+A configuração principal fica em `src/main/resources/application.properties`. O Spring Boot carrega esse arquivo e permite sobrescrever propriedades por variáveis de ambiente. **Não é necessário manter um `hibernate.properties` separado** quando a aplicação utiliza o gerenciamento padrão do Spring Boot com Spring Data JPA. Se houver uma inicialização manual de Hibernate no código, confirme antes de remover o arquivo.
+
+Exemplo de `application.properties` recomendado para esta entrega (confirme que os nomes das propriedades Redis correspondem aos usados na classe de conexão):
+
+```properties
+# Aplicação
+spring.application.name=pagamento
+server.port=${SERVER_PORT:8080}
+
+# PostgreSQL — padrões para desenvolvimento local
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/pagamento}
+spring.datasource.username=${DB_USERNAME:postgres}
+spring.datasource.password=${DB_PASSWORD:}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+spring.jpa.open-in-view=false
+spring.jpa.properties.hibernate.format_sql=true
+
+# Flyway
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+
+# RabbitMQ
+spring.rabbitmq.host=${RABBITMQ_HOST:localhost}
+spring.rabbitmq.port=${RABBITMQ_PORT:5672}
+spring.rabbitmq.username=${RABBITMQ_USER:admin}
+spring.rabbitmq.password=${RABBITMQ_PASSWORD:}
+spring.rabbitmq.publisher-confirm-type=correlated
+spring.rabbitmq.publisher-returns=true
+spring.rabbitmq.template.mandatory=true
+
+# Redis (configuração própria da aplicação)
+app.redis.host=${APP_REDIS_HOST:localhost}
+app.redis.port=${APP_REDIS_PORT:6379}
+
+# Logs
+logging.level.org.springframework.amqp=INFO
+logging.level.org.springframework.rabbit=INFO
+```
+
+**Conexão com PostgreSQL.** A URL JDBC segue o formato `jdbc:postgresql://host:porta/banco`. Ao executar a aplicação fora do Docker, `localhost:5432` aponta para o PostgreSQL exposto na máquina. Configure `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` no ambiente da aplicação. O banco `pagamento` deve existir e estar acessível; as tabelas são gerenciadas pelas migrações Flyway.
+
+**Hibernate e Flyway.** `spring.jpa.hibernate.ddl-auto=validate` faz o Hibernate verificar a compatibilidade do esquema com as entidades mapeadas, sem criar ou alterar tabelas. `spring.flyway.enabled=true` executa as migrações disponíveis em `src/main/resources/db/migration`. Evite `hibernate.hbm2ddl.auto=create` ou `spring.jpa.hibernate.ddl-auto=create`, pois podem recriar o esquema e causar perda de dados. Se o projeto utilizar JDBC puro sem entidades JPA, essas propriedades Hibernate não serão aplicáveis.
+
+**SQL e logs.** `spring.jpa.show-sql=false` evita imprimir todas as consultas no console por padrão; `hibernate.format_sql=true` prepara a formatação quando a emissão de SQL estiver habilitada. Logs AMQP em `INFO` reduzem ruído; durante diagnóstico, podem ser temporariamente alterados para `DEBUG`.
+
+**RabbitMQ.** As configurações de *publisher confirms* (`correlated`), *publisher returns* e `mandatory` foram preservadas do projeto. Elas dão suporte à confirmação e ao tratamento de mensagens não roteadas, desde que a implementação trate os callbacks/resultados adequadamente.
+
+**Redis.** As propriedades `app.redis.host` e `app.redis.port` são personalizadas: devem corresponder exatamente às lidas pelo código da aplicação. Elas não são as propriedades padrão de auto-configuração `spring.data.redis.*` do Spring Boot.
+
+#### Configuração no Docker Compose
 
 O `compose.yaml` fornece ao backend as variáveis de conexão com os demais contêineres:
 
@@ -153,9 +208,25 @@ environment:
   APP_REDIS_PORT: 6379
 ```
 
-Dentro da rede Docker, as dependências são acessadas pelos nomes dos serviços (`postgres`, `redis`, `rabbitmq`), e não por `localhost`. As propriedades do Spring Boot podem ser sobrescritas pelas variáveis de ambiente, permitindo preservar as configurações de desenvolvimento local.
+Dentro da rede Docker, `postgres`, `redis` e `rabbitmq` são nomes de serviços. `localhost` dentro do contêiner do backend se refere ao próprio backend, não aos outros serviços. As variáveis `SPRING_DATASOURCE_*` e `SPRING_RABBITMQ_*` têm precedência sobre as propriedades correspondentes do arquivo; `APP_REDIS_*` alimentam os placeholders Redis acima.
 
-> Os nomes de variáveis e do banco acima correspondem ao `compose.yaml` preparado para esta entrega. Se os arquivos finais tiverem sido alterados, mantenha esta seção sincronizada com eles.
+Para execução local pelo IntelliJ ou terminal, defina as variáveis necessárias no ambiente ou na configuração de execução, por exemplo:
+
+```powershell
+$env:DB_URL = "jdbc:postgresql://localhost:5432/pagamento"
+$env:DB_USERNAME = "postgres"
+$env:DB_PASSWORD = "<senha-local>"
+$env:RABBITMQ_HOST = "localhost"
+$env:RABBITMQ_USER = "admin"
+$env:RABBITMQ_PASSWORD = "<senha-local>"
+.\gradlew.bat bootRun
+```
+
+Substitua os valores ilustrativos por credenciais reais do ambiente. Se o Compose não publicar as portas do PostgreSQL, Redis e RabbitMQ no host, o backend iniciado fora do Docker não conseguirá acessá-los por `localhost`; nesse caso, exponha apenas as portas necessárias para desenvolvimento ou execute o backend pelo Compose.
+
+> **Segurança:** não inclua senhas reais no `application.properties`, no `hibernate.properties`, no README ou em commits. Use variáveis de ambiente, mantenha `.env` fora do Git e disponibilize somente `.env.example`. Caso uma senha já tenha sido exposta, troque-a.
+
+> **Compatibilidade:** os exemplos desta seção refletem as configurações compartilhadas durante o desenvolvimento. Confira os nomes de serviços, o nome real do banco, a classe Redis e as dependências JPA no repositório final antes de publicar.
 
 ## Contrato da API
 
