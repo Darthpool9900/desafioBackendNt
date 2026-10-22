@@ -1,4 +1,4 @@
-# Checkout BFF — Desafio Técnico CKW
+# Checkout BFF — Desafio Técnico
 
 Backend for Frontend (BFF) para um fluxo de checkout de assinaturas, desenvolvido com **Java 27**, **Spring Boot 4.1.1** e **Gradle**. A aplicação prepara o carrinho no pré-checkout, valida o meio de pagamento, simula a cobrança e fornece respostas específicas para as telas de pagamento, sucesso e erro.
 
